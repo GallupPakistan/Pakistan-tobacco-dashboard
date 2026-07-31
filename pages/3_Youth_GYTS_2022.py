@@ -86,9 +86,11 @@ left, right = st.columns(2)
 with left:
     st.subheader("1 · Ever tried a cigarette — by gender")
     cross = filtered.groupby([SEX_COL, TRIED_COL]).size().reset_index(name="Count")
-    fig = px.bar(cross, x=SEX_COL, y="Count", color=TRIED_COL, barmode="group",
-                 color_discrete_sequence=COLORWAY, labels={SEX_COL: "Gender", TRIED_COL: "Ever Tried Cigarette"},
-                 text_auto=True)
+    cross["Percent"] = (cross["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
+    fig = px.bar(cross, x=SEX_COL, y="Percent", color=TRIED_COL, barmode="group",
+                 color_discrete_sequence=COLORWAY, labels={SEX_COL: "Gender", TRIED_COL: "Ever Tried Cigarette",
+                                                            "Percent": "Percent (%)"},
+                 text_auto=".1f")
     fig.update_traces(textposition="outside", cliponaxis=False)
     chart_or_table(fig, cross, key="c1")
 
@@ -96,8 +98,9 @@ with right:
     st.subheader("2 · Age distribution")
     age_counts = filtered[AGE_COL].value_counts().reset_index()
     age_counts.columns = ["Age", "Count"]
-    fig2 = px.bar(age_counts.sort_values("Age"), x="Age", y="Count", color_discrete_sequence=COLORWAY,
-                  text_auto=True)
+    age_counts["Percent"] = (age_counts["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
+    fig2 = px.bar(age_counts.sort_values("Age"), x="Age", y="Percent", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Percent (%)"})
     fig2.update_traces(textposition="outside", cliponaxis=False)
     fig2.update_layout(showlegend=False)
     chart_or_table(fig2, age_counts, key="c2")
@@ -107,8 +110,9 @@ with left2:
     st.subheader("3 · Grade distribution")
     grade_counts = filtered[GRADE_COL].value_counts().reset_index()
     grade_counts.columns = ["Grade", "Count"]
-    fig3 = px.bar(grade_counts.sort_values("Grade"), x="Grade", y="Count", color_discrete_sequence=COLORWAY,
-                  text_auto=True)
+    grade_counts["Percent"] = (grade_counts["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
+    fig3 = px.bar(grade_counts.sort_values("Grade"), x="Grade", y="Percent", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Percent (%)"})
     fig3.update_traces(textposition="outside", cliponaxis=False)
     fig3.update_layout(showlegend=False)
     chart_or_table(fig3, grade_counts, key="c3")
@@ -117,8 +121,9 @@ with right2:
     st.subheader("4 · Smoking frequency (past 30 days)")
     freq_counts = filtered[CURRENT_COL].value_counts().reset_index()
     freq_counts.columns = ["Days Smoked", "Count"]
-    fig4 = px.bar(freq_counts, x="Days Smoked", y="Count", color="Days Smoked", color_discrete_sequence=COLORWAY,
-                  text_auto=True)
+    freq_counts["Percent"] = (freq_counts["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
+    fig4 = px.bar(freq_counts, x="Days Smoked", y="Percent", color="Days Smoked", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Percent (%)"})
     fig4.update_traces(textposition="outside", cliponaxis=False)
     fig4.update_layout(showlegend=False)
     chart_or_table(fig4, freq_counts, key="c4")
@@ -135,8 +140,9 @@ with right3:
     st.subheader("6 · Advertisement / promotion exposure")
     ad_counts = filtered[AD_COL].dropna().value_counts().reset_index()
     ad_counts.columns = ["Response", "Count"]
-    fig6 = px.bar(ad_counts, x="Response", y="Count", color="Response", color_discrete_sequence=COLORWAY,
-                  text_auto=True)
+    ad_counts["Percent"] = (ad_counts["Count"] / ad_counts["Count"].sum() * 100).round(1) if len(ad_counts) else 0
+    fig6 = px.bar(ad_counts, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Percent (%)"})
     fig6.update_traces(textposition="outside", cliponaxis=False)
     fig6.update_layout(showlegend=False)
     chart_or_table(fig6, ad_counts, key="c6")
@@ -146,8 +152,9 @@ with left4:
     st.subheader("7 · Saw smoking inside school")
     school_counts = filtered[SCHOOL_COL].dropna().value_counts().reset_index()
     school_counts.columns = ["Response", "Count"]
-    fig7 = px.bar(school_counts, x="Response", y="Count", color="Response", color_discrete_sequence=COLORWAY,
-                  text_auto=True)
+    school_counts["Percent"] = (school_counts["Count"] / school_counts["Count"].sum() * 100).round(1) if len(school_counts) else 0
+    fig7 = px.bar(school_counts, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Percent (%)"})
     fig7.update_traces(textposition="outside", cliponaxis=False)
     fig7.update_layout(showlegend=False)
     chart_or_table(fig7, school_counts, key="c7")
@@ -156,8 +163,9 @@ with right4:
     st.subheader("8 · Parents who smoke tobacco")
     parent_counts = filtered[PARENT_COL].dropna().value_counts().reset_index()
     parent_counts.columns = ["Response", "Count"]
-    fig8 = px.bar(parent_counts, x="Response", y="Count", color="Response", color_discrete_sequence=COLORWAY,
-                  text_auto=True)
+    parent_counts["Percent"] = (parent_counts["Count"] / parent_counts["Count"].sum() * 100).round(1) if len(parent_counts) else 0
+    fig8 = px.bar(parent_counts, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Percent (%)"})
     fig8.update_traces(textposition="outside", cliponaxis=False)
     fig8.update_layout(showlegend=False)
     chart_or_table(fig8, parent_counts, key="c8")
@@ -165,16 +173,18 @@ with right4:
 st.subheader("9 · Closest friends who smoke tobacco")
 friend_counts = filtered[FRIEND_COL].dropna().value_counts().reset_index()
 friend_counts.columns = ["Response", "Count"]
-fig9 = px.bar(friend_counts, x="Response", y="Count", color="Response", color_discrete_sequence=COLORWAY,
-                text_auto=True)
+friend_counts["Percent"] = (friend_counts["Count"] / friend_counts["Count"].sum() * 100).round(1) if len(friend_counts) else 0
+fig9 = px.bar(friend_counts, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
+                text_auto=".1f", labels={"Percent": "Percent (%)"})
 fig9.update_traces(textposition="outside", cliponaxis=False)
 fig9.update_layout(showlegend=False)
 chart_or_table(fig9, friend_counts, key="c9")
 
 st.subheader("10 · Composition — gender × ever tried")
 comp = filtered.groupby([SEX_COL, TRIED_COL]).size().reset_index(name="Count")
-fig10 = px.bar(comp, x=SEX_COL, y="Count", color=TRIED_COL, barmode="stack", color_discrete_sequence=COLORWAY,
-               labels={SEX_COL: "Gender"}, text_auto=True)
+comp["Percent"] = (comp["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
+fig10 = px.bar(comp, x=SEX_COL, y="Percent", color=TRIED_COL, barmode="stack", color_discrete_sequence=COLORWAY,
+               labels={SEX_COL: "Gender", "Percent": "Percent (%)"}, text_auto=".1f")
 fig10.update_traces(textposition="inside")
 chart_or_table(fig10, comp, key="c10")
 
