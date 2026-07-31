@@ -56,12 +56,12 @@ st.divider()
 # ---------------------------------------------------------------------------
 # 10 CHARTS
 # ---------------------------------------------------------------------------
-st.subheader("1 · Overall vs Men vs Women")
+st.subheader("1 · Men vs Women")
 limited = filtered.sort_values("Overall (%)", ascending=False).head(n_indicators)
-melted = limited.melt(id_vars=["Category", "Indicator"], value_vars=["Overall (%)", "Men (%)", "Women (%)"],
+melted = limited.melt(id_vars=["Category", "Indicator"], value_vars=["Men (%)", "Women (%)"],
                        var_name="Group", value_name="Percent")
 fig1 = hbar(melted, label_col="Indicator", value_col="Percent", color_col="Group",
-            barmode="group", colorway=COLORWAY)
+            barmode="group", colorway=COLORWAY, text_auto=".1f")
 chart_or_table(fig1, limited, key="c1")
 
 # Charts 2-7: one per category
@@ -75,10 +75,10 @@ for cat in ["Tobacco Use", "Secondhand Smoke", "Media", "Knowledge/Attitudes", "
     with cat_cols[col_idx % 2]:
         st.subheader(f"{cat_chart_num} · {cat} (top {n_indicators})")
         cat_df_limited = cat_df.sort_values("Overall (%)", ascending=False).head(n_indicators)
-        cat_melted = cat_df_limited.melt(id_vars=["Indicator"], value_vars=["Overall (%)", "Men (%)", "Women (%)"],
+        cat_melted = cat_df_limited.melt(id_vars=["Indicator"], value_vars=["Men (%)", "Women (%)"],
                                           var_name="Group", value_name="Percent")
         fig = hbar(cat_melted, label_col="Indicator", value_col="Percent", color_col="Group",
-                   barmode="group", colorway=COLORWAY, label_width=22)
+                   barmode="group", colorway=COLORWAY, label_width=22, text_auto=".1f")
         fig.update_layout(showlegend=(col_idx == 0))
         chart_or_table(fig, cat_df_limited, key=f"cat_{cat}")
     cat_chart_num += 1

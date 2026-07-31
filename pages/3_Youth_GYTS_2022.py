@@ -27,7 +27,7 @@ PARENT_COL = "Do your parents smoke tobacco? [OR45]"
 FRIEND_COL = "Do any of your closest friends smoke tobacco? [OR46]"
 
 st.title("🎓 Youth — GYTS 2022")
-st.caption(f"Row-level data · 9,783 students · Custom filters by age, sex, and grade · Theme: {THEME['name']}")
+st.caption(f"Row-level data · 9,783 students · Custom filters by age, gender, and grade · Theme: {THEME['name']}")
 
 df = load_gyts_2022()
 
@@ -40,7 +40,7 @@ sex_opts = sorted(df[SEX_COL].dropna().unique().tolist())
 age_opts = df[AGE_COL].dropna().unique().tolist()
 grade_opts = sorted(df[GRADE_COL].dropna().unique().tolist())
 
-sex_sel = st.sidebar.multiselect("Sex", sex_opts, default=sex_opts)
+sex_sel = st.sidebar.multiselect("Gender", sex_opts, default=sex_opts)
 grade_sel = st.sidebar.multiselect("Grade", grade_opts, default=grade_opts)
 age_sel = st.sidebar.multiselect("Age", age_opts, default=age_opts)
 
@@ -84,10 +84,10 @@ st.divider()
 left, right = st.columns(2)
 
 with left:
-    st.subheader("1 · Ever tried a cigarette — by sex")
+    st.subheader("1 · Ever tried a cigarette — by gender")
     cross = filtered.groupby([SEX_COL, TRIED_COL]).size().reset_index(name="Count")
     fig = px.bar(cross, x=SEX_COL, y="Count", color=TRIED_COL, barmode="group",
-                 color_discrete_sequence=COLORWAY, labels={SEX_COL: "Sex", TRIED_COL: "Ever Tried Cigarette"})
+                 color_discrete_sequence=COLORWAY, labels={SEX_COL: "Gender", TRIED_COL: "Ever Tried Cigarette"})
     chart_or_table(fig, cross, key="c1")
 
 with right:
@@ -155,9 +155,10 @@ fig9 = px.bar(friend_counts, x="Response", y="Count", color="Response", color_di
 fig9.update_layout(showlegend=False)
 chart_or_table(fig9, friend_counts, key="c9")
 
-st.subheader("10 · Composition — sex × ever tried")
+st.subheader("10 · Composition — gender × ever tried")
 comp = filtered.groupby([SEX_COL, TRIED_COL]).size().reset_index(name="Count")
-fig10 = px.bar(comp, x=SEX_COL, y="Count", color=TRIED_COL, barmode="stack", color_discrete_sequence=COLORWAY)
+fig10 = px.bar(comp, x=SEX_COL, y="Count", color=TRIED_COL, barmode="stack", color_discrete_sequence=COLORWAY,
+               labels={SEX_COL: "Gender"})
 chart_or_table(fig10, comp, key="c10")
 
 with st.expander("View filtered raw data"):

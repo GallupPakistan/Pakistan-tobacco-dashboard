@@ -163,24 +163,43 @@ with left3:
     st.subheader("7 · Noticed health warnings on packs")
     warn_counts = filtered[WARNING_COL].dropna().astype(str).value_counts().reset_index()
     warn_counts.columns = ["Response", "Count"]
-    fig7 = px.bar(warn_counts, x="Response", y="Count", color="Response",
-                  color_discrete_sequence=COLORWAY)
-    fig7.update_layout(showlegend=False)
+    # The raw data stores the "Don't know" answer code as the numeral "3.0"
+    # instead of the text label — relabel it for display only.
+    warn_counts["Response"] = warn_counts["Response"].replace({"3.0": "DON'T KNOW", "3": "DON'T KNOW"})
+    warn_counts = warn_counts.groupby("Response", as_index=False)["Count"].sum()
+    warn_counts["Percent"] = (warn_counts["Count"] / warn_counts["Count"].sum() * 100).round(1)
+    fig7 = px.bar(warn_counts, x="Response", y="Percent", color="Response",
+                  color_discrete_sequence=COLORWAY, text_auto=".1f",
+                  labels={"Percent": "Weighted Percent (%)"})
+    fig7.update_layout(legend_title_text="Response")
+    fig7.update_traces(textposition="outside", cliponaxis=False)
     chart_or_table(fig7, warn_counts, key="c7")
 
 with right3:
     st.subheader("8 · Noticed tobacco advertisements")
     ad_counts = filtered[AD_COL].dropna().astype(str).value_counts().reset_index()
     ad_counts.columns = ["Response", "Count"]
-    fig8 = px.bar(ad_counts, x="Response", y="Count", color="Response",
-                  color_discrete_sequence=COLORWAY)
-    fig8.update_layout(showlegend=False)
+    ad_counts["Percent"] = (ad_counts["Count"] / ad_counts["Count"].sum() * 100).round(1)
+    fig8 = px.bar(ad_counts, x="Response", y="Percent", color="Response",
+                  color_discrete_sequence=COLORWAY, text_auto=".1f",
+                  labels={"Percent": "Weighted Percent (%)"})
+    fig8.update_layout(legend_title_text="Response")
+    fig8.update_traces(textposition="outside", cliponaxis=False)
     chart_or_table(fig8, ad_counts, key="c8")
 
 st.subheader("9 · Age spread by smoking status")
+st.caption("Box shows the middle 50% of ages (25th–75th percentile); the line inside each box is the median age; dots are outliers.")
 box_df = filtered[filtered[SMOKE_COL].notna()]
 fig9 = px.box(box_df, x=SMOKE_COL, y=AGE_COL, color=SMOKE_COL, color_discrete_sequence=COLORWAY, labels=SHORT_LABELS)
-fig9.update_layout(showlegend=False)
+fig9.update_layout(legend_title_text="Smoking Status")
+# Label each box with its median age so the key value is readable without hovering.
+medians = box_df.groupby(SMOKE_COL)[AGE_COL].median()
+for status, med_age in medians.items():
+    fig9.add_annotation(
+        x=status, y=med_age, text=f"Median: {med_age:.0f}",
+        showarrow=False, yshift=14, font=dict(size=11, color="#1B4332"),
+        bgcolor="rgba(255,255,255,0.75)",
+    )
 chart_or_table(fig9, box_df[[SMOKE_COL, AGE_COL]], key="c9")
 
 st.subheader("10 · Population composition — gender × region")

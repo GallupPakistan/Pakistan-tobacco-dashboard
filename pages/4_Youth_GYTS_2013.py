@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import plotly.express as px
 
 from utils.data_loader import load_gyts_2013
@@ -22,13 +23,33 @@ st.caption(
 
 df = load_gyts_2013()
 
+# Questions whose answer options have a natural ascending order (age, grade)
+# rather than being ranked by percentage. Sorting these by Weighted Percent
+# instead scrambles the axis (e.g. 13, 14, 15, 12, 16, 17+, 11), so they get
+# an explicit ascending order applied instead.
+ANSWER_ORDER = {
+    "How old are you?": [
+        "11 years old or younger", "12 years old", "13 years old", "14 years old",
+        "15 years old", "16 years old", "17 years old or older",
+    ],
+    "In what grade/form are you?": ["7th", "8th", "9th", "10th"],
+}
+
 def q_chart(question_text: str, chart_key: str, top_n: int | None = None):
-    subset = df[df["Survey Question"] == question_text].sort_values("Weighted Percent", ascending=False)
+    subset = df[df["Survey Question"] == question_text].copy()
+    order = ANSWER_ORDER.get(question_text)
+    if order:
+        subset["Answer Option"] = pd.Categorical(subset["Answer Option"], categories=order, ordered=True)
+        subset = subset.sort_values("Answer Option")
+    else:
+        subset = subset.sort_values("Weighted Percent", ascending=False)
     if top_n:
         subset = subset.head(top_n)
     fig = px.bar(subset, x="Answer Option", y="Weighted Percent", color="Answer Option",
-                 text_auto=".1f", color_discrete_sequence=COLORWAY)
-    fig.update_layout(showlegend=False, yaxis_title="Weighted Percent (%)", xaxis_tickangle=-20)
+                 text_auto=".1f", color_discrete_sequence=COLORWAY,
+                 category_orders={"Answer Option": order} if order else None)
+    fig.update_layout(yaxis_title="Weighted Percent (%)", xaxis_tickangle=-20,
+                       legend_title_text="Answer Option")
     return fig, subset
 
 # ---------------------------------------------------------------------------
@@ -80,7 +101,7 @@ chart_or_table(fig1, subset1, key="c1")
 # ---------------------------------------------------------------------------
 FIXED_QUESTIONS = [
     ("2 · Age distribution", "How old are you?"),
-    ("3 · Sex distribution", "What is your sex?"),
+    ("3 · Gender distribution", "What is your sex?"),
     ("4 · Grade distribution", "In what grade/form are you?"),
     ("5 · Ever tried cigarette smoking",
      "Have you ever tried or experimented with cigarette smoking, even one or two puffs? Original Analysis Unweighted Unweighted"),
