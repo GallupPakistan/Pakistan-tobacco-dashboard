@@ -17,10 +17,12 @@ import re
 
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
 from utils.data_loader import load_gyts_2013, load_gyts_2022_derived
 from utils.theme import (
-    apply_theme, kpi_row, chart_or_table, slope_chart, page_footer,
+    apply_theme, kpi_row, chart_or_table, slope_chart, hbar, themed_pie, page_footer,
     filter_header, filter_status, count_active, inject_responsive_css,
 )
 
@@ -258,6 +260,92 @@ if len(filtered):
         left_title="2013", right_title="2022",
     )
     chart_or_table(fig_slope, slope_df, key="youth_slope")
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# MORE VISUALS — additional ways to read the same 2013 vs 2022 comparison:
+# a real line chart per category, a change-magnitude bar, top movers in
+# each direction, a 2013-vs-2022 scatter, and a share-of-indicators donut.
+# ---------------------------------------------------------------------------
+if len(filtered):
+    st.subheader("Category trend — 2013 → 2022 (average %)")
+    st.caption(
+        "One line per category, averaging all its indicators — the clearest read on "
+        "which topics moved the most between the two youth surveys."
+    )
+    cat_avg = (
+        filtered.groupby("Category")[["2013 Value", "2022 Value"]].mean().round(1)
+        .reset_index().melt(id_vars="Category", value_vars=["2013 Value", "2022 Value"],
+                             var_name="Year", value_name="Average %")
+    )
+    cat_avg["Year"] = cat_avg["Year"].str.replace(" Value", "", regex=False)
+    fig_line = px.line(
+        cat_avg, x="Year", y="Average %", color="Category", markers=True,
+        color_discrete_sequence=COLORWAY, text="Average %",
+    )
+    fig_line.update_traces(textposition="top center", texttemplate="%{text:.1f}", line=dict(width=3),
+                            marker=dict(size=9))
+    fig_line.update_layout(height=420, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0))
+    chart_or_table(fig_line, cat_avg, key="youth_cat_line")
+
+    left_m, right_m = st.columns(2)
+    with left_m:
+        st.subheader("Change 2013 → 2022 (percentage points)")
+        change_df = filtered.copy().sort_values("Delta")
+        change_df["Direction"] = change_df["Delta"].apply(lambda v: "Increase" if v >= 0 else "Decrease")
+        fig_change = hbar(change_df, label_col="Indicator", value_col="Delta", color_col="Direction",
+                           colorway=[COLORWAY[3], COLORWAY[0]], text_auto=".1f")
+        chart_or_table(fig_change, change_df, key="youth_change")
+
+    with right_m:
+        st.subheader("Share of indicators — improved vs worsened")
+        share_counts = filtered["Status"].value_counts().reset_index()
+        share_counts.columns = ["Status", "Count"]
+        fig_share = themed_pie(share_counts, names_col="Status", values_col="Count", colorway=COLORWAY)
+        chart_or_table(fig_share, share_counts, key="youth_share")
+
+    left_m2, right_m2 = st.columns(2)
+    with left_m2:
+        st.subheader("Top 5 most improved")
+        improved = filtered[filtered["Status"] == "Better"].copy()
+        improved["AbsChange"] = improved["Delta"].abs()
+        improved = improved.sort_values("AbsChange", ascending=False).head(5)
+        if len(improved):
+            fig_up = hbar(improved, label_col="Indicator", value_col="Delta", colorway=[COLORWAY[0]],
+                          text_auto=".1f")
+            chart_or_table(fig_up, improved, key="youth_top_improved")
+        else:
+            st.info("No indicators currently marked 'Better' in the filtered view.")
+
+    with right_m2:
+        st.subheader("Top 5 most concerning")
+        worsened = filtered[filtered["Status"] == "Worse"].copy()
+        worsened["AbsChange"] = worsened["Delta"].abs()
+        worsened = worsened.sort_values("AbsChange", ascending=False).head(5)
+        if len(worsened):
+            fig_down = hbar(worsened, label_col="Indicator", value_col="Delta", colorway=[COLORWAY[6]],
+                            text_auto=".1f")
+            chart_or_table(fig_down, worsened, key="youth_top_worsened")
+        else:
+            st.info("No indicators currently marked 'Worse' in the filtered view.")
+
+    st.subheader("2013 value vs 2022 value — every indicator")
+    st.caption(
+        "Points below the dashed line moved down since 2013; points above it moved up. "
+        "Hover any point for the exact indicator."
+    )
+    fig_scatter = px.scatter(
+        filtered, x="2013 Value", y="2022 Value", color="Category",
+        color_discrete_sequence=COLORWAY, hover_name="Indicator", size_max=10,
+    )
+    max_val = max(filtered["2013 Value"].max(), filtered["2022 Value"].max())
+    fig_scatter.add_trace(go.Scatter(
+        x=[0, max_val], y=[0, max_val], mode="lines",
+        line=dict(dash="dash", color="gray"), name="No change",
+    ))
+    fig_scatter.update_traces(marker=dict(size=11))
+    chart_or_table(fig_scatter, filtered[["Indicator", "Category", "2013 Value", "2022 Value"]], key="youth_scatter")
 
 st.divider()
 
