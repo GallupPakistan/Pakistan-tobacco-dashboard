@@ -48,8 +48,11 @@ def q_chart(question_text: str, chart_key: str, top_n: int | None = None):
     fig = px.bar(subset, x="Answer Option", y="Weighted Percent", color="Answer Option",
                  text_auto=".1f", color_discrete_sequence=COLORWAY,
                  category_orders={"Answer Option": order} if order else None)
-    fig.update_layout(yaxis_title="Weighted Percent (%)", xaxis_tickangle=-20,
-                       legend_title_text="Answer Option")
+    # No legend here — color already repeats what's on the x-axis, and showing
+    # both was crowding the plot and causing the rotated tick labels to overlap.
+    fig.update_layout(showlegend=False, yaxis_title="Weighted Percent (%)",
+                       xaxis_tickangle=-30, margin=dict(b=120))
+    fig.update_xaxes(automargin=True)
     return fig, subset
 
 # ---------------------------------------------------------------------------

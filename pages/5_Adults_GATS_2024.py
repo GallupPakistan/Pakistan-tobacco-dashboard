@@ -57,12 +57,20 @@ st.divider()
 # 10 CHARTS
 # ---------------------------------------------------------------------------
 st.subheader("1 · Men vs Women")
-limited = filtered.sort_values("Overall (%)", ascending=False).head(n_indicators)
-melted = limited.melt(id_vars=["Category", "Indicator"], value_vars=["Men (%)", "Women (%)"],
-                       var_name="Group", value_name="Percent")
-fig1 = hbar(melted, label_col="Indicator", value_col="Percent", color_col="Group",
-            barmode="group", colorway=COLORWAY, text_auto=".1f")
-chart_or_table(fig1, limited, key="c1")
+st.caption(
+    "Only indicators with a separate Men and Women figure in the source data can appear here — "
+    "several indicators (e.g. Media, Knowledge/Attitudes, Economics) are Overall-only."
+)
+gendered = filtered[filtered["Men (%)"].notna() & filtered["Women (%)"].notna()]
+limited = gendered.sort_values("Overall (%)", ascending=False).head(n_indicators)
+if len(limited):
+    melted = limited.melt(id_vars=["Category", "Indicator"], value_vars=["Men (%)", "Women (%)"],
+                           var_name="Group", value_name="Percent")
+    fig1 = hbar(melted, label_col="Indicator", value_col="Percent", color_col="Group",
+                barmode="group", colorway=COLORWAY, text_auto=".1f")
+    chart_or_table(fig1, limited, key="c1")
+else:
+    st.info("No indicators in the current Category filter have a Men/Women breakdown.")
 
 # Charts 2-7: one per category
 cat_chart_num = 2
@@ -72,15 +80,26 @@ for cat in ["Tobacco Use", "Secondhand Smoke", "Media", "Knowledge/Attitudes", "
     cat_df = filtered[filtered["Category"] == cat]
     if cat_df.empty:
         continue
+    cat_has_gender = cat_df["Men (%)"].notna().any() and cat_df["Women (%)"].notna().any()
     with cat_cols[col_idx % 2]:
         st.subheader(f"{cat_chart_num} · {cat} (top {n_indicators})")
-        cat_df_limited = cat_df.sort_values("Overall (%)", ascending=False).head(n_indicators)
-        cat_melted = cat_df_limited.melt(id_vars=["Indicator"], value_vars=["Men (%)", "Women (%)"],
-                                          var_name="Group", value_name="Percent")
-        fig = hbar(cat_melted, label_col="Indicator", value_col="Percent", color_col="Group",
-                   barmode="group", colorway=COLORWAY, label_width=22, text_auto=".1f")
-        fig.update_layout(showlegend=(col_idx == 0))
-        chart_or_table(fig, cat_df_limited, key=f"cat_{cat}")
+        if cat_has_gender:
+            cat_df_gendered = cat_df[cat_df["Men (%)"].notna() & cat_df["Women (%)"].notna()]
+            cat_df_limited = cat_df_gendered.sort_values("Overall (%)", ascending=False).head(n_indicators)
+            cat_melted = cat_df_limited.melt(id_vars=["Indicator"], value_vars=["Men (%)", "Women (%)"],
+                                              var_name="Group", value_name="Percent")
+            fig = hbar(cat_melted, label_col="Indicator", value_col="Percent", color_col="Group",
+                       barmode="group", colorway=COLORWAY, label_width=22, text_auto=".1f")
+            fig.update_layout(showlegend=(col_idx == 0))
+            chart_or_table(fig, cat_df_limited, key=f"cat_{cat}")
+        else:
+            # This category has no Men/Women split in the source data at all —
+            # show the Overall figure instead of an empty chart.
+            st.caption("No Men/Women breakdown for this category — showing Overall (%).")
+            cat_df_limited = cat_df.sort_values("Overall (%)", ascending=False).head(n_indicators)
+            fig = hbar(cat_df_limited, label_col="Indicator", value_col="Overall (%)",
+                       colorway=COLORWAY, label_width=22, text_auto=".1f")
+            chart_or_table(fig, cat_df_limited, key=f"cat_{cat}")
     cat_chart_num += 1
     col_idx += 1
 
