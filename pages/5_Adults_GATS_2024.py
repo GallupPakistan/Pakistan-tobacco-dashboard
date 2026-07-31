@@ -73,6 +73,17 @@ else:
     st.info("No indicators in the current Category filter have a Men/Women breakdown.")
 
 # Charts 2-7: one per category
+# Plain-language titles — "Media" and "Economics" alone don't tell a
+# non-technical reader what the chart is about, so each category gets 2-3
+# extra words spelling out what it actually measures.
+CATEGORY_TITLES = {
+    "Tobacco Use": "Tobacco Use",
+    "Secondhand Smoke": "Secondhand Smoke Exposure",
+    "Media": "Media & Advertising Exposure",
+    "Knowledge/Attitudes": "Knowledge & Attitudes on Health Risks",
+    "Cessation": "Cessation & Quitting Support",
+    "Economics": "Economics — Tax & Pricing Views",
+}
 cat_chart_num = 2
 cat_cols = st.columns(2)
 col_idx = 0
@@ -82,7 +93,7 @@ for cat in ["Tobacco Use", "Secondhand Smoke", "Media", "Knowledge/Attitudes", "
         continue
     cat_has_gender = cat_df["Men (%)"].notna().any() and cat_df["Women (%)"].notna().any()
     with cat_cols[col_idx % 2]:
-        st.subheader(f"{cat_chart_num} · {cat} (top {n_indicators})")
+        st.subheader(f"{cat_chart_num} · {CATEGORY_TITLES.get(cat, cat)} (top {n_indicators})")
         if cat_has_gender:
             cat_df_gendered = cat_df[cat_df["Men (%)"].notna() & cat_df["Women (%)"].notna()]
             cat_df_limited = cat_df_gendered.sort_values("Overall (%)", ascending=False).head(n_indicators)
@@ -108,7 +119,7 @@ gap_df = filtered.copy()
 gap_df["Gender Gap (pts)"] = (gap_df["Men (%)"] - gap_df["Women (%)"]).round(1)
 gap_df = gap_df.sort_values("Gender Gap (pts)", ascending=False).head(n_indicators)
 fig_gap = hbar(gap_df, label_col="Indicator", value_col="Gender Gap (pts)", color_col="Category",
-               colorway=COLORWAY)
+               colorway=COLORWAY, text_auto=".1f")
 chart_or_table(fig_gap, gap_df, key="gap")
 cat_chart_num += 1
 

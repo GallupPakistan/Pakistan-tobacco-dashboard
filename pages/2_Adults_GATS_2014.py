@@ -121,7 +121,8 @@ with right:
         if len(filtered) else pd.DataFrame(columns=[GENDER_COL, SMOKE_COL, "Count"])
     )
     fig2 = px.bar(cross, x=GENDER_COL, y="Count", color=SMOKE_COL, barmode="group",
-                  color_discrete_sequence=COLORWAY, labels=SHORT_LABELS)
+                  color_discrete_sequence=COLORWAY, labels=SHORT_LABELS, text_auto=True)
+    fig2.update_traces(textposition="outside", cliponaxis=False)
     chart_or_table(fig2, cross, key="c2")
 
 st.subheader("3 · Smoking prevalence by region")
@@ -155,7 +156,8 @@ with right2:
         .apply(lambda s: (s.isin(SMOKER_VALUES).sum() / len(s) * 100) if len(s) else 0)
         .reset_index(name="Current Smoker %")
     )
-    fig6 = hbar(edu_rate, label_col=EDU_COL, value_col="Current Smoker %", colorway=COLORWAY, label_width=22)
+    fig6 = hbar(edu_rate, label_col=EDU_COL, value_col="Current Smoker %", colorway=COLORWAY, label_width=22,
+                text_auto=".1f")
     chart_or_table(fig6, edu_rate, key="c6")
 
 left3, right3 = st.columns(2)
@@ -205,7 +207,8 @@ chart_or_table(fig9, box_df[[SMOKE_COL, AGE_COL]], key="c9")
 st.subheader("10 · Population composition — gender × region")
 comp = filtered.groupby([RESIDENCE_COL, GENDER_COL]).size().reset_index(name="Count")
 fig10 = px.bar(comp, x=RESIDENCE_COL, y="Count", color=GENDER_COL, barmode="stack",
-               color_discrete_sequence=COLORWAY, labels=SHORT_LABELS)
+               color_discrete_sequence=COLORWAY, labels=SHORT_LABELS, text_auto=True)
+fig10.update_traces(textposition="inside")
 chart_or_table(fig10, comp, key="c10")
 
 with st.expander("View filtered raw data"):

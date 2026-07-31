@@ -151,14 +151,14 @@ with left2:
     st.markdown(f"**3 · Top {n_labels} indicators by %**")
     top10 = filtered.sort_values("Weighted Percent", ascending=False).head(n_labels)
     fig3 = hbar(top10, label_col="Short Description", value_col="Weighted Percent", color_col="Category",
-                colorway=COLORWAY)
+                colorway=COLORWAY, text_auto=".1f")
     chart_or_table(fig3, top10, key="c3")
 
 with right2:
     st.markdown(f"**4 · Bottom {n_labels} indicators by %**")
     bottom10 = filtered.sort_values("Weighted Percent", ascending=True).head(n_labels)
     fig4 = hbar(bottom10, label_col="Short Description", value_col="Weighted Percent", color_col="Category",
-                colorway=COLORWAY)
+                colorway=COLORWAY, text_auto=".1f")
     chart_or_table(fig4, bottom10, key="c4")
 
 st.markdown("**5 · Distribution of Weighted Percent values**")
@@ -176,7 +176,7 @@ for cat in ["Tobacco Use", "Cessation", "Secondhand Smoke", "Knowledge And Attit
         st.markdown(f"**{chart_num} · {cat} indicators (top {n_labels})**")
         cat_df_limited = cat_df.sort_values("Weighted Percent", ascending=False).head(n_labels)
         figc = hbar(cat_df_limited, label_col="Short Description", value_col="Weighted Percent",
-                    colorway=COLORWAY)
+                    colorway=COLORWAY, text_auto=".1f")
         chart_or_table(figc, cat_df_limited, key=f"cat_{cat}")
     chart_num += 1
     idx += 1

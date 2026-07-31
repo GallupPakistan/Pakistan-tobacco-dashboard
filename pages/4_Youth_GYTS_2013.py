@@ -96,6 +96,7 @@ n_answers = top_n_control(
     key="q1_n",
     default=min(5, df[df["Survey Question"] == question_sel]["Answer Option"].nunique()),
 )
+st.caption(f"📝 Survey question: *{question_sel}*")
 fig1, subset1 = q_chart(question_sel, "c1", top_n=n_answers)
 chart_or_table(fig1, subset1, key="c1")
 
@@ -127,6 +128,12 @@ for pair in pairs:
         with col:
             st.subheader(title)
             if q in df["Survey Question"].values:
+                # Show the exact survey question wording so the chart isn't
+                # just a short paraphrase — the "Original Analysis Unweighted
+                # Unweighted" suffix on one question is a dataset artifact,
+                # not part of the actual wording, so it's trimmed for display.
+                display_q = q.replace(" Original Analysis Unweighted Unweighted", "")
+                st.caption(f"📝 {display_q}")
                 fig, subset = q_chart(q, title)
                 chart_or_table(fig, subset, key=title)
             else:

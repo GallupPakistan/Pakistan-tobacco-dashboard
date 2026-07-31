@@ -263,13 +263,13 @@ with left2:
     st.subheader("5 · 2014 — Overall vs Male vs Female")
     y2014 = base_filtered[base_filtered["Indicator"].isin(keep_indicators)]
     fig5 = hbar(y2014, label_col="Indicator", value_col="2014 Value", color_col="Group",
-                barmode="group", colorway=COLORWAY)
+                barmode="group", colorway=COLORWAY, text_auto=".1f")
     chart_or_table(fig5, y2014, key="c5")
 
 with right2:
     st.subheader("6 · 2024 — Overall vs Male vs Female")
     fig6 = hbar(y2014, label_col="Indicator", value_col="2024 Value", color_col="Group",
-                barmode="group", colorway=COLORWAY)
+                barmode="group", colorway=COLORWAY, text_auto=".1f")
     chart_or_table(fig6, y2014, key="c6")
 
 left3, right3 = st.columns(2)
@@ -308,7 +308,7 @@ if len(gap_df_full):
     gap_df = gap_df_full[gap_df_full["Indicator"].isin(gap_keep)]
     gap_melted = gap_df.melt(id_vars="Indicator", var_name="Group", value_name="Change (pts)")
     fig9 = hbar(gap_melted, label_col="Indicator", value_col="Change (pts)", color_col="Group",
-                barmode="group", colorway=COLORWAY)
+                barmode="group", colorway=COLORWAY, text_auto=".1f")
     chart_or_table(fig9, gap_df, key="c9")
 else:
     st.info(
@@ -388,7 +388,7 @@ ya_df = pd.DataFrame(ya_rows)
 if len(ya_df):
     ya_melted = ya_df.melt(id_vars="Theme", var_name="Survey", value_name="Value")
     fig11 = hbar(ya_melted, label_col="Theme", value_col="Value", color_col="Survey", barmode="group",
-                 colorway=[COLORWAY[0], COLORWAY[2]])
+                 colorway=[COLORWAY[0], COLORWAY[2]], text_auto=".1f")
     chart_or_table(fig11, ya_df, key="c11")
 else:
     st.info("No matching youth/adult themes found in the current data.")
