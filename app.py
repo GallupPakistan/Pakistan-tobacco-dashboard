@@ -20,6 +20,7 @@ import streamlit as st
 overview = st.Page("pages/1_Overview.py", title="Overview", icon="🏠", default=True)
 gats_2014 = st.Page("pages/2_Adults_GATS_2014.py", title="Adults GATS 2014", icon="📊")
 gats_2024 = st.Page("pages/5_Adults_GATS_2024.py", title="Adults GATS 2024", icon="🚬")
+gats_compare = st.Page("pages/11_Adults_Compare_2014_vs_2024.py", title="Compare 2014 vs 2024", icon="🆚")
 gyts_2022 = st.Page("pages/3_Youth_GYTS_2022.py", title="Youth GYTS 2022", icon="🎓")
 gyts_2013 = st.Page("pages/4_Youth_GYTS_2013.py", title="Youth GYTS 2013", icon="📈")
 kpi_cards = st.Page("pages/6_KPI_Cards_GYTS_2022.py", title="KPI Cards GYTS 2022", icon="⭐")
@@ -31,7 +32,7 @@ methodology = st.Page("pages/10_Methodology.py", title="Methodology & Definition
 pg = st.navigation(
     {
         "": [overview],
-        "Adult Surveys": [gats_2014, gats_2024],
+        "Adult Surveys": [gats_2014, gats_2024, gats_compare],
         "Youth Surveys": [gyts_2022, gyts_2013, kpi_cards, youth_trend],
         "Comparisons": [trend, scorecard, methodology],
     }
