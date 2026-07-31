@@ -24,7 +24,6 @@ gats_compare = st.Page("pages/11_Adults_Compare_2014_vs_2024.py", title="Compare
 gyts_2022 = st.Page("pages/3_Youth_GYTS_2022.py", title="Youth GYTS 2022", icon="🎓")
 gyts_2013 = st.Page("pages/4_Youth_GYTS_2013.py", title="Youth GYTS 2013", icon="📈")
 kpi_cards = st.Page("pages/6_KPI_Cards_GYTS_2022.py", title="KPI Cards GYTS 2022", icon="⭐")
-trend = st.Page("pages/7_Trend_2014_vs_2024.py", title="Trend 2014 vs 2024", icon="🔀")
 scorecard = st.Page("pages/8_KPI_Scorecard.py", title="KPI Scorecard", icon="📋")
 youth_trend = st.Page("pages/9_Youth_Trend_2013_vs_2022.py", title="Youth Trend 2013 vs 2022", icon="🧒")
 methodology = st.Page("pages/10_Methodology.py", title="Methodology & Definitions", icon="📚")
@@ -34,7 +33,7 @@ pg = st.navigation(
         "": [overview],
         "Adult Surveys": [gats_2014, gats_2024, gats_compare],
         "Youth Surveys": [gyts_2022, gyts_2013, kpi_cards, youth_trend],
-        "Comparisons": [trend, scorecard, methodology],
+        "Comparisons": [scorecard, methodology],
     }
 )
 pg.run()
