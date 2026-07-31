@@ -118,7 +118,7 @@ st.divider()
 # ---------------------------------------------------------------------------
 st.markdown(f"<h3 style='color:{MID_GREEN}; margin-bottom:0.75rem;'>🧭 Jump to insights</h3>", unsafe_allow_html=True)
 
-TREND_PAGE = "pages/7_Trend_2014_vs_2024.py"
+TREND_PAGE = "pages/11_Adults_Compare_2014_vs_2024.py"
 
 _direction_map = {
     "Current tobacco use": "decrease",
@@ -199,7 +199,7 @@ with insight_col1:
             )
         else:
             st.markdown("No data available.")
-        st.page_link(TREND_PAGE, label="Explore in Trend →", icon="🔀")
+        st.page_link(TREND_PAGE, label="Explore in Compare →", icon="🆚")
 
 with insight_col2:
     with st.container(border=True):
@@ -212,7 +212,7 @@ with insight_col2:
             )
         else:
             st.markdown("No data available.")
-        st.page_link(TREND_PAGE, label="Explore in Trend →", icon="🔀")
+        st.page_link(TREND_PAGE, label="Explore in Compare →", icon="🆚")
 
 with insight_col3:
     with st.container(border=True):
@@ -225,7 +225,7 @@ with insight_col3:
             )
         else:
             st.markdown("No matching youth/adult themes found.")
-        st.page_link(TREND_PAGE, label="Explore in Trend →", icon="🔀")
+        st.page_link(TREND_PAGE, label="Explore in Compare →", icon="🆚")
 
 st.divider()
 
