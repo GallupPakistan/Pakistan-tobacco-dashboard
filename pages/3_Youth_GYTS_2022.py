@@ -124,8 +124,9 @@ with right2:
     freq_counts["Percent"] = (freq_counts["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
     fig4 = px.bar(freq_counts, x="Days Smoked", y="Percent", color="Days Smoked", color_discrete_sequence=COLORWAY,
                   text_auto=".1f", labels={"Percent": "Percent (%)"})
-    fig4.update_traces(textposition="outside", cliponaxis=False)
-    fig4.update_layout(showlegend=False)
+    fig4.update_traces(textposition="outside", cliponaxis=False, textfont=dict(size=16, color="#1f2937"))
+    fig4.update_layout(showlegend=False, uniformtext_minsize=14, uniformtext_mode="show", height=430,
+                        margin=dict(t=40))
     chart_or_table(fig4, freq_counts, key="c4")
 
 left3, right3 = st.columns(2)
