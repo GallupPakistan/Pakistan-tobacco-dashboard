@@ -291,8 +291,10 @@ if len(filtered):
 
     left_m, right_m = st.columns(2)
     with left_m:
-        st.subheader("Change 2013 → 2022 (percentage points)")
-        change_df = filtered.copy().sort_values("Delta")
+        st.subheader("Top 5 change 2013 → 2022 (percentage points)")
+        change_df = filtered.copy()
+        change_df["AbsDelta"] = change_df["Delta"].abs()
+        change_df = change_df.sort_values("AbsDelta", ascending=False).head(5).sort_values("Delta")
         change_df["Direction"] = change_df["Delta"].apply(lambda v: "Increase" if v >= 0 else "Decrease")
         fig_change = hbar(change_df, label_col="Indicator", value_col="Delta", color_col="Direction",
                            colorway=[COLORWAY[3], COLORWAY[0]], text_auto=".1f")
