@@ -298,6 +298,13 @@ if len(filtered):
         change_df["Direction"] = change_df["Delta"].apply(lambda v: "Increase" if v >= 0 else "Decrease")
         fig_change = hbar(change_df, label_col="Indicator", value_col="Delta", color_col="Direction",
                            colorway=[COLORWAY[3], COLORWAY[0]], text_auto=".1f")
+        # This chart's bars are often all-negative ("Decrease"), which pushed
+        # the outside data label past the plot edge into the row-label area —
+        # padding the x-axis range gives the label room to sit clear of it.
+        vmin = min(change_df["Delta"].min(), 0)
+        vmax = max(change_df["Delta"].max(), 0)
+        pad = ((vmax - vmin) or 1) * 0.22
+        fig_change.update_xaxes(range=[vmin - pad, vmax + pad])
         chart_or_table(fig_change, change_df, key="youth_change")
 
     with right_m:
