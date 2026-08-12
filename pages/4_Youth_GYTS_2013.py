@@ -15,18 +15,37 @@ THEME = apply_theme("gyts_2013")
 COLORWAY = THEME["colorway"]
 ACCENT = THEME["accent"]
 
+# ---------------------------------------------------------------------------
+# IMPORTANT DATA NOTE
+# The GYTS 2013 Pakistan codebook explicitly labels its percentage column as
+# "Unweighted" (unlike GYTS 2022, whose codebook labels its percentage column
+# "Weighted"). So the figures on this page are raw sample percentages, NOT
+# survey-weighted national estimates — they should not be treated as directly
+# comparable to the (weighted) GYTS 2022 figures shown elsewhere in this
+# dashboard, and may differ somewhat from any officially "weighted" 2013
+# national estimate published elsewhere.
+# ---------------------------------------------------------------------------
+PCT_COL = "Unweighted Percent (see note)"
+
 st.title("📈 Youth — GYTS 2013 (Aggregated)")
 st.caption(
     "Only percentage-level data is available for this round — row-level microdata "
     f"was not obtained, so this page shows fixed snapshots rather than live filters. Theme: {THEME['name']}"
 )
+st.warning(
+    "**Data note:** the source codebook for GYTS 2013 labels its percentage column as "
+    "**unweighted** (a raw sample percentage), unlike GYTS 2022 which is survey-weighted. "
+    "Figures on this page are therefore not directly comparable to the weighted 2022 figures "
+    "shown elsewhere in this dashboard, and should not be cited as national estimates.",
+    icon="⚠️",
+)
 
 df = load_gyts_2013()
 
 # Questions whose answer options have a natural ascending order (age, grade)
-# rather than being ranked by percentage. Sorting these by Weighted Percent
-# instead scrambles the axis (e.g. 13, 14, 15, 12, 16, 17+, 11), so they get
-# an explicit ascending order applied instead.
+# rather than being ranked by percentage. Sorting these by percent instead
+# scrambles the axis (e.g. 13, 14, 15, 12, 16, 17+, 11), so they get an
+# explicit ascending order applied instead.
 ANSWER_ORDER = {
     "How old are you?": [
         "11 years old or younger", "12 years old", "13 years old", "14 years old",
@@ -42,15 +61,15 @@ def q_chart(question_text: str, chart_key: str, top_n: int | None = None):
         subset["Answer Option"] = pd.Categorical(subset["Answer Option"], categories=order, ordered=True)
         subset = subset.sort_values("Answer Option")
     else:
-        subset = subset.sort_values("Weighted Percent", ascending=False)
+        subset = subset.sort_values(PCT_COL, ascending=False)
     if top_n:
         subset = subset.head(top_n)
-    fig = px.bar(subset, x="Answer Option", y="Weighted Percent", color="Answer Option",
+    fig = px.bar(subset, x="Answer Option", y=PCT_COL, color="Answer Option",
                  text_auto=".1f", color_discrete_sequence=COLORWAY,
                  category_orders={"Answer Option": order} if order else None)
     # No legend here — color already repeats what's on the x-axis, and showing
     # both was crowding the plot and causing the rotated tick labels to overlap.
-    fig.update_layout(showlegend=False, yaxis_title="Weighted Percent (%)",
+    fig.update_layout(showlegend=False, yaxis_title="Unweighted Percent (%)",
                        xaxis_tickangle=-30, margin=dict(b=120))
     fig.update_xaxes(automargin=True)
     return fig, subset
@@ -60,7 +79,7 @@ def q_chart(question_text: str, chart_key: str, top_n: int | None = None):
 # ---------------------------------------------------------------------------
 def pct_for(question, answer):
     row = df[(df["Survey Question"] == question) & (df["Answer Option"] == answer)]
-    return row["Weighted Percent"].iloc[0] if not row.empty else None
+    return row[PCT_COL].iloc[0] if not row.empty else None
 
 tried_pct = pct_for(
     "Have you ever tried or experimented with cigarette smoking, even one or two puffs? Original Analysis Unweighted Unweighted",
@@ -74,8 +93,8 @@ school_pct = pct_for(
 kpi_row(
     [
         {"label": "Survey questions available", "value": f"{df['Survey Question'].nunique()}"},
-        {"label": "Ever tried a cigarette", "value": f"{tried_pct:.1f}%" if tried_pct is not None else "—"},
-        {"label": "Saw smoking inside school", "value": f"{school_pct:.1f}%" if school_pct is not None else "—"},
+        {"label": "Ever tried a cigarette (unweighted)", "value": f"{tried_pct:.1f}%" if tried_pct is not None else "—"},
+        {"label": "Saw smoking inside school (unweighted)", "value": f"{school_pct:.1f}%" if school_pct is not None else "—"},
         {"label": "Total data rows", "value": f"{len(df):,}"},
     ],
     accent=ACCENT,
@@ -143,4 +162,4 @@ st.divider()
 st.subheader("Browse full 2013 dataset")
 st.dataframe(df, use_container_width=True, height=400)
 
-page_footer("GYTS 2013 — aggregated official indicators")
+page_footer("GYTS 2013 — aggregated official indicators (unweighted, per source codebook)")
