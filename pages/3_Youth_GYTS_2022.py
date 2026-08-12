@@ -25,9 +25,62 @@ AD_COL = "During the past 30 days, did you see any advertisements or promotions 
 SCHOOL_COL = "During the past 30 days, did you see anyone smoke inside the school building or... [CR22]"
 PARENT_COL = "Do your parents smoke tobacco? [OR45]"
 FRIEND_COL = "Do any of your closest friends smoke tobacco? [OR46]"
+WEIGHT_COL = "FinalWgt"  # <-- required for every % on this page
+
+# ---------------------------------------------------------------------------
+# Weighted-statistics helpers
+# GYTS uses a school-based cluster sample design, so every respondent carries
+# a sample weight (FinalWgt). Also critical: pandas' `~series.isin([...])`
+# treats missing (NaN) values as NOT in the list, so its negation counts
+# missing/non-response rows as a "positive" match — silently inflating rates
+# whenever a question has non-response. Every helper below explicitly drops
+# missing values from the denominator before computing a rate.
+# ---------------------------------------------------------------------------
+
+def weighted_pct(frame, value_col, positive_values, weight_col=WEIGHT_COL):
+    """Weighted % of value_col in positive_values, among rows where value_col
+    is not missing. `positive_values` can be a list of exact values, or a
+    callable(series) -> boolean mask for more complex conditions."""
+    valid = frame[value_col].notna()
+    d = frame.loc[valid]
+    if len(d) == 0:
+        return 0.0
+    w = d[weight_col].astype(float)
+    total_w = w.sum()
+    if total_w == 0:
+        return 0.0
+    if callable(positive_values):
+        pos = positive_values(d[value_col])
+    else:
+        pos = d[value_col].isin(positive_values)
+    return 100 * w[pos].sum() / total_w
+
+
+def weighted_value_counts_pct(frame, value_col, weight_col=WEIGHT_COL):
+    """Weighted % distribution across all observed (non-missing) categories."""
+    d = frame.dropna(subset=[value_col])
+    if len(d) == 0:
+        return pd.DataFrame(columns=[value_col, "Percent"])
+    total_w = d[weight_col].astype(float).sum()
+    out = d.groupby(value_col)[weight_col].sum().reset_index(name="Percent")
+    out["Percent"] = (out["Percent"] / total_w * 100).round(1)
+    return out
+
+
+def weighted_cross_pct(frame, group_col, value_col, weight_col=WEIGHT_COL):
+    """Weighted % of value_col WITHIN each group_col category (each group
+    sums to 100)."""
+    d = frame.dropna(subset=[group_col, value_col])
+    if len(d) == 0:
+        return pd.DataFrame(columns=[group_col, value_col, "Percent"])
+    out = d.groupby([group_col, value_col])[weight_col].sum().reset_index(name="w")
+    totals = out.groupby(group_col)["w"].transform("sum")
+    out["Percent"] = (out["w"] / totals * 100).round(1)
+    return out.drop(columns="w")
+
 
 st.title("🎓 Youth — GYTS 2022")
-st.caption(f"Row-level data · 9,783 students · Custom filters by age, gender, and grade · Theme: {THEME['name']}")
+st.caption(f"Row-level data · 9,783 students · Survey-weighted · Custom filters by age, gender, and grade · Theme: {THEME['name']}")
 
 df = load_gyts_2022()
 
@@ -55,23 +108,18 @@ n_active_filters = count_active(
 filter_status(len(df), len(filtered), n_active_filters, noun="students")
 
 # ---------------------------------------------------------------------------
-# KPI ROW
+# KPI ROW  (all weighted, missing responses excluded from denominators)
 # ---------------------------------------------------------------------------
-ever_tried_rate = (filtered[TRIED_COL] == "Yes").sum() / len(filtered) * 100 if len(filtered) else 0
-current_smoker_rate = (
-    (~filtered[CURRENT_COL].isin(["0 days"])).sum() / len(filtered) * 100 if len(filtered) else 0
-)
-parent_smoker_rate = (
-    filtered[PARENT_COL].isin(["Father only", "Mother only", "Both"]).sum() / filtered[PARENT_COL].notna().sum() * 100
-    if filtered[PARENT_COL].notna().sum() else 0
-)
+ever_tried_rate = weighted_pct(filtered, TRIED_COL, ["Yes"])
+current_smoker_rate = weighted_pct(filtered, CURRENT_COL, lambda s: s != "0 days")
+parent_smoker_rate = weighted_pct(filtered, PARENT_COL, ["Father only", "Mother only", "Both"])
 
 kpi_row(
     [
         {"label": "Students (filtered)", "value": f"{len(filtered):,}"},
-        {"label": "Ever tried cigarettes", "value": f"{ever_tried_rate:.1f}%"},
-        {"label": "Currently smoke (30 days)", "value": f"{current_smoker_rate:.1f}%"},
-        {"label": "Household has a smoking parent", "value": f"{parent_smoker_rate:.1f}%"},
+        {"label": "Ever tried cigarettes (weighted)", "value": f"{ever_tried_rate:.1f}%"},
+        {"label": "Currently smoke, 30 days (weighted)", "value": f"{current_smoker_rate:.1f}%"},
+        {"label": "Household has a smoking parent (weighted)", "value": f"{parent_smoker_rate:.1f}%"},
     ],
     accent=ACCENT,
 )
@@ -79,117 +127,108 @@ kpi_row(
 st.divider()
 
 # ---------------------------------------------------------------------------
-# 10 CHARTS
+# 10 CHARTS  (all weighted)
 # ---------------------------------------------------------------------------
 left, right = st.columns(2)
 
 with left:
     st.subheader("1 · Ever tried a cigarette — by gender")
-    cross = filtered.groupby([SEX_COL, TRIED_COL]).size().reset_index(name="Count")
-    cross["Percent"] = (cross["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
+    cross = weighted_cross_pct(filtered, SEX_COL, TRIED_COL)
     fig = px.bar(cross, x=SEX_COL, y="Percent", color=TRIED_COL, barmode="group",
                  color_discrete_sequence=COLORWAY, labels={SEX_COL: "Gender", TRIED_COL: "Ever Tried Cigarette",
-                                                            "Percent": "Percent (%)"},
+                                                            "Percent": "Weighted Percent (%)"},
                  text_auto=".1f")
     fig.update_traces(textposition="outside", cliponaxis=False)
     chart_or_table(fig, cross, key="c1")
 
 with right:
     st.subheader("2 · Age distribution")
-    age_counts = filtered[AGE_COL].value_counts().reset_index()
-    age_counts.columns = ["Age", "Count"]
-    age_counts["Percent"] = (age_counts["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
-    fig2 = px.bar(age_counts.sort_values("Age"), x="Age", y="Percent", color_discrete_sequence=COLORWAY,
-                  text_auto=".1f", labels={"Percent": "Percent (%)"})
+    age_pct = weighted_value_counts_pct(filtered, AGE_COL)
+    age_pct.columns = ["Age", "Percent"]
+    fig2 = px.bar(age_pct.sort_values("Age"), x="Age", y="Percent", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Weighted Percent (%)"})
     fig2.update_traces(textposition="outside", cliponaxis=False)
     fig2.update_layout(showlegend=False)
-    chart_or_table(fig2, age_counts, key="c2")
+    chart_or_table(fig2, age_pct, key="c2")
 
 left2, right2 = st.columns(2)
 with left2:
     st.subheader("3 · Grade distribution")
-    grade_counts = filtered[GRADE_COL].value_counts().reset_index()
-    grade_counts.columns = ["Grade", "Count"]
-    grade_counts["Percent"] = (grade_counts["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
-    fig3 = px.bar(grade_counts.sort_values("Grade"), x="Grade", y="Percent", color_discrete_sequence=COLORWAY,
-                  text_auto=".1f", labels={"Percent": "Percent (%)"})
+    grade_pct = weighted_value_counts_pct(filtered, GRADE_COL)
+    grade_pct.columns = ["Grade", "Percent"]
+    fig3 = px.bar(grade_pct.sort_values("Grade"), x="Grade", y="Percent", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Weighted Percent (%)"})
     fig3.update_traces(textposition="outside", cliponaxis=False)
     fig3.update_layout(showlegend=False)
-    chart_or_table(fig3, grade_counts, key="c3")
+    chart_or_table(fig3, grade_pct, key="c3")
 
 with right2:
     st.subheader("4 · Smoking frequency (past 30 days)")
-    freq_counts = filtered[CURRENT_COL].value_counts().reset_index()
-    freq_counts.columns = ["Days Smoked", "Count"]
-    freq_counts["Percent"] = (freq_counts["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
-    fig4 = px.bar(freq_counts, x="Days Smoked", y="Percent", color="Days Smoked", color_discrete_sequence=COLORWAY,
-                  text_auto=".1f", labels={"Percent": "Percent (%)"})
+    freq_pct = weighted_value_counts_pct(filtered, CURRENT_COL)
+    freq_pct.columns = ["Days Smoked", "Percent"]
+    fig4 = px.bar(freq_pct, x="Days Smoked", y="Percent", color="Days Smoked", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Weighted Percent (%)"})
     fig4.update_traces(textposition="outside", cliponaxis=False, textfont=dict(size=16, color="#1f2937"))
     fig4.update_layout(showlegend=False, uniformtext_minsize=14, uniformtext_mode="show", height=430,
                         margin=dict(t=40))
-    chart_or_table(fig4, freq_counts, key="c4")
+    chart_or_table(fig4, freq_pct, key="c4")
 
 left3, right3 = st.columns(2)
 with left3:
     st.subheader("5 · Noticed health warnings on packs")
-    warn_counts = filtered[WARNING_COL].dropna().value_counts().reset_index()
-    warn_counts.columns = ["Response", "Count"]
-    fig5 = themed_pie(warn_counts, names_col="Response", values_col="Count", colorway=COLORWAY)
-    chart_or_table(fig5, warn_counts, key="c5")
+    warn_pct = weighted_value_counts_pct(filtered, WARNING_COL)
+    warn_pct.columns = ["Response", "Percent"]
+    fig5 = themed_pie(warn_pct, names_col="Response", values_col="Percent", colorway=COLORWAY)
+    chart_or_table(fig5, warn_pct, key="c5")
 
 with right3:
     st.subheader("6 · Advertisement / promotion exposure")
-    ad_counts = filtered[AD_COL].dropna().value_counts().reset_index()
-    ad_counts.columns = ["Response", "Count"]
-    ad_counts["Percent"] = (ad_counts["Count"] / ad_counts["Count"].sum() * 100).round(1) if len(ad_counts) else 0
-    fig6 = px.bar(ad_counts, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
-                  text_auto=".1f", labels={"Percent": "Percent (%)"})
+    ad_pct = weighted_value_counts_pct(filtered, AD_COL)
+    ad_pct.columns = ["Response", "Percent"]
+    fig6 = px.bar(ad_pct, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Weighted Percent (%)"})
     fig6.update_traces(textposition="outside", cliponaxis=False)
     fig6.update_layout(showlegend=False)
-    chart_or_table(fig6, ad_counts, key="c6")
+    chart_or_table(fig6, ad_pct, key="c6")
 
 left4, right4 = st.columns(2)
 with left4:
     st.subheader("7 · Saw smoking inside school")
-    school_counts = filtered[SCHOOL_COL].dropna().value_counts().reset_index()
-    school_counts.columns = ["Response", "Count"]
-    school_counts["Percent"] = (school_counts["Count"] / school_counts["Count"].sum() * 100).round(1) if len(school_counts) else 0
-    fig7 = px.bar(school_counts, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
-                  text_auto=".1f", labels={"Percent": "Percent (%)"})
+    school_pct = weighted_value_counts_pct(filtered, SCHOOL_COL)
+    school_pct.columns = ["Response", "Percent"]
+    fig7 = px.bar(school_pct, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Weighted Percent (%)"})
     fig7.update_traces(textposition="outside", cliponaxis=False)
     fig7.update_layout(showlegend=False)
-    chart_or_table(fig7, school_counts, key="c7")
+    chart_or_table(fig7, school_pct, key="c7")
 
 with right4:
     st.subheader("8 · Parents who smoke tobacco")
-    parent_counts = filtered[PARENT_COL].dropna().value_counts().reset_index()
-    parent_counts.columns = ["Response", "Count"]
-    parent_counts["Percent"] = (parent_counts["Count"] / parent_counts["Count"].sum() * 100).round(1) if len(parent_counts) else 0
-    fig8 = px.bar(parent_counts, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
-                  text_auto=".1f", labels={"Percent": "Percent (%)"})
+    parent_pct = weighted_value_counts_pct(filtered, PARENT_COL)
+    parent_pct.columns = ["Response", "Percent"]
+    fig8 = px.bar(parent_pct, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
+                  text_auto=".1f", labels={"Percent": "Weighted Percent (%)"})
     fig8.update_traces(textposition="outside", cliponaxis=False)
     fig8.update_layout(showlegend=False)
-    chart_or_table(fig8, parent_counts, key="c8")
+    chart_or_table(fig8, parent_pct, key="c8")
 
 st.subheader("9 · Closest friends who smoke tobacco")
-friend_counts = filtered[FRIEND_COL].dropna().value_counts().reset_index()
-friend_counts.columns = ["Response", "Count"]
-friend_counts["Percent"] = (friend_counts["Count"] / friend_counts["Count"].sum() * 100).round(1) if len(friend_counts) else 0
-fig9 = px.bar(friend_counts, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
-                text_auto=".1f", labels={"Percent": "Percent (%)"})
+friend_pct = weighted_value_counts_pct(filtered, FRIEND_COL)
+friend_pct.columns = ["Response", "Percent"]
+fig9 = px.bar(friend_pct, x="Response", y="Percent", color="Response", color_discrete_sequence=COLORWAY,
+                text_auto=".1f", labels={"Percent": "Weighted Percent (%)"})
 fig9.update_traces(textposition="outside", cliponaxis=False)
 fig9.update_layout(showlegend=False)
-chart_or_table(fig9, friend_counts, key="c9")
+chart_or_table(fig9, friend_pct, key="c9")
 
 st.subheader("10 · Composition — gender × ever tried")
-comp = filtered.groupby([SEX_COL, TRIED_COL]).size().reset_index(name="Count")
-comp["Percent"] = (comp["Count"] / len(filtered) * 100).round(1) if len(filtered) else 0
+comp = weighted_cross_pct(filtered, SEX_COL, TRIED_COL)
 fig10 = px.bar(comp, x=SEX_COL, y="Percent", color=TRIED_COL, barmode="stack", color_discrete_sequence=COLORWAY,
-               labels={SEX_COL: "Gender", "Percent": "Percent (%)"}, text_auto=".1f")
+               labels={SEX_COL: "Gender", "Percent": "Weighted Percent (%)"}, text_auto=".1f")
 fig10.update_traces(textposition="inside")
 chart_or_table(fig10, comp, key="c10")
 
 with st.expander("View filtered raw data"):
     st.dataframe(filtered, use_container_width=True)
 
-page_footer("GYTS 2022 — row-level dataset")
+page_footer("GYTS 2022 — row-level dataset, survey-weighted")
