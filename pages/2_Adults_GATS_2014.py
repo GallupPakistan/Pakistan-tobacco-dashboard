@@ -18,7 +18,7 @@ ACCENT = THEME["accent"]
 
 RESIDENCE_COL = "Urban/Rural Residence [residence]"
 GENDER_COL = "Gender [A01]"
-AGE_COL = "How old are you? [A03]"
+AGE_COL = "Age in Years [age]"
 SMOKE_COL = "Do you *currently* smoke tobacco on a daily basis, less than daily, or not at... [B01]"
 EDU_COL = "What is the highest level of education you have completed? [A04]"
 WARNING_COL = "In the last 30 days, did you notice any health warnings on cigarette packages? [G202]"
