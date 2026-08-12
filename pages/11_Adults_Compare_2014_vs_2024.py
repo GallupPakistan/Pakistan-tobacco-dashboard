@@ -25,6 +25,46 @@ df = load_comparison()
 df["Change (pts)"] = (df["2024 Value"] - df["2014 Value"]).round(1)
 
 # ---------------------------------------------------------------------------
+# DIRECTION AWARENESS
+# "Lower is better" is NOT true for every indicator here — a drop in
+# "Quit attempts", "Advised to quit by healthcare provider", "Considered
+# quitting due to warnings", or "Noticed health warnings on packages" is a
+# DECLINE, not an improvement. Without this map, idxmin() on raw Change(pts)
+# will mislabel any of those as the "biggest improvement" whenever a user
+# filters down to a set of indicators dominated by them.
+# ---------------------------------------------------------------------------
+GOOD_DIRECTION = {
+    "Current tobacco use": "decrease",
+    "Current tobacco smoking": "decrease",
+    "Avg cigarettes/day (daily smokers)": "decrease",
+    "SHS exposure: Home": "decrease",
+    "SHS exposure: Workplace": "decrease",
+    "SHS exposure: Government buildings": "decrease",
+    "SHS exposure: Private buildings": "decrease",
+    "SHS exposure: Healthcare facilities": "decrease",
+    "SHS exposure: Restaurants": "decrease",
+    "SHS exposure: Marriage halls": "decrease",
+    "SHS exposure: Public transportation": "decrease",
+    "SHS exposure: Universities": "decrease",
+    "SHS exposure: Schools": "decrease",
+    "Quit attempt (past 12 months)": "increase",
+    "Advised to quit by healthcare provider": "increase",
+    "Considered quitting due to warnings": "increase",
+    "Noticed health warnings on packages": "increase",
+    "Noticed tobacco ads/promos in stores": "decrease",
+    "Noticed any tobacco ads/promos/sponsorships": "decrease",
+}
+
+def improvement_score(row):
+    """Positive score = moved in the healthy direction; negative = moved the wrong way.
+    Indicators with no known direction (e.g. price/expenditure) return None and are excluded."""
+    direction = GOOD_DIRECTION.get(row["Indicator"])
+    if direction is None:
+        return None
+    sign = -1 if direction == "decrease" else 1
+    return row["Change (pts)"] * sign
+
+# ---------------------------------------------------------------------------
 # SIDEBAR FILTERS
 # ---------------------------------------------------------------------------
 filter_header()
@@ -40,7 +80,9 @@ filter_status(len(indicators), len(indicator_sel), n_active_filters, noun="indic
 
 overall = filtered[filtered["Group"].str.strip().str.lower() == "overall"].copy()
 PKR_INDICATORS = [i for i in indicators if "PKR" in i or "cost" in i.lower() or "expenditure" in i.lower()]
-overall_pct = overall[~overall["Indicator"].isin(PKR_INDICATORS)]
+overall_pct = overall[~overall["Indicator"].isin(PKR_INDICATORS)].copy()
+overall_pct["Improvement Score"] = overall_pct.apply(improvement_score, axis=1)
+overall_directional = overall_pct.dropna(subset=["Improvement Score"])
 
 # ---------------------------------------------------------------------------
 # KPI ROW
@@ -48,7 +90,13 @@ overall_pct = overall[~overall["Indicator"].isin(PKR_INDICATORS)]
 smoke_row = df[(df["Group"] == "Overall") & (df["Indicator"] == "Current tobacco use")]
 smoke_2014 = float(smoke_row["2014 Value"].iloc[0]) if len(smoke_row) else None
 smoke_2024 = float(smoke_row["2024 Value"].iloc[0]) if len(smoke_row) else None
-biggest_drop = overall_pct.loc[overall_pct["Change (pts)"].idxmin()] if len(overall_pct) else None
+
+# "Biggest improvement" now ranks by Improvement Score (direction-aware),
+# not raw Change(pts) — so it can never mislabel a decline as progress.
+biggest_drop = (
+    overall_directional.loc[overall_directional["Improvement Score"].idxmax()]
+    if len(overall_directional) else None
+)
 
 kpi_row(
     [
@@ -60,6 +108,12 @@ kpi_row(
     ],
     accent=ACCENT,
 )
+
+if len(overall_pct) != len(overall_directional):
+    st.caption(
+        f"ℹ️ {len(overall_pct) - len(overall_directional)} indicator(s) in the current filter have no defined "
+        "'improvement direction' (e.g. price/expenditure figures) and are excluded from the improvement ranking above."
+    )
 
 st.divider()
 
@@ -125,8 +179,11 @@ chart_or_table(fig3, top_df, key="c3")
 # ---------------------------------------------------------------------------
 # 4 · CHANGE MAGNITUDE — mirrors the "Smoker % by education level" hbar
 # style from GATS 2014: one bar per category, sorted, with value labels.
+# This chart intentionally shows raw magnitude of change (not "improvement"),
+# so no direction-awareness is needed here — it's purely "how much moved".
 # ---------------------------------------------------------------------------
 st.subheader(f"4 · Biggest movers (Overall) — change in percentage points")
+st.caption("Shows magnitude of change only — a bar here doesn't imply 'better' or 'worse', just 'moved a lot'.")
 change_top = overall_pct.reindex(overall_pct["Change (pts)"].abs().sort_values(ascending=False).index).head(n_show)
 change_top = change_top.sort_values("Change (pts)")
 fig4 = hbar(change_top, label_col="Indicator", value_col="Change (pts)", colorway=COLORWAY, text_auto=".1f")
