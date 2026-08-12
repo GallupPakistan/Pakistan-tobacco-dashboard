@@ -7,10 +7,18 @@ youth, using only genuinely comparable questions across the two surveys.
 
 Honesty note: the 2013 file is pre-aggregated (no row-level youth data
 for that year), so every 2013 value here is looked up from published
-weighted percentages by matching on the exact survey question / answer
-option text — not hardcoded — and the 2022 values come the same way from
-the CDC-calculated derived-indicators file. If a source CSV changes, the
+percentages by matching on the exact survey question / answer option
+text — not hardcoded — and the 2022 values come the same way from the
+CDC-calculated derived-indicators file. If a source CSV changes, the
 numbers on this page change with it.
+
+IMPORTANT DATA CAVEAT: the GYTS 2013 Pakistan codebook explicitly labels
+its percentage column as UNWEIGHTED (a raw sample percentage), while the
+2022 derived-indicators file is survey-WEIGHTED. So every "2013 vs 2022"
+comparison on this page mixes an unweighted baseline with a weighted
+endpoint — the direction of change (up/down) is still informative, but
+the exact magnitude of each Delta, and therefore the 🟢/🟡/🔴 Status
+threshold, should be read as approximate rather than a precise estimate.
 """
 
 import re
@@ -40,21 +48,38 @@ st.caption(
     "Scorecard-style view of youth tobacco indicators with a comparable question in both the "
     f"2013 and 2022 GYTS surveys. Theme: {THEME['name']}"
 )
+st.warning(
+    "**Data note:** GYTS 2013 percentages are **unweighted** (raw sample %, per the source "
+    "codebook), while GYTS 2022 percentages are **survey-weighted**. Every comparison below "
+    "therefore mixes the two — treat the direction of change (▲/▼) as reliable, but treat exact "
+    "point-differences and the 🟢/🟡/🔴 status as approximate, not precise national estimates.",
+    icon="⚠️",
+)
 
 df13 = load_gyts_2013()
 df22 = load_gyts_2022_derived()
 
+# The 2013 dataset's percent column was corrected from a misleading
+# "Weighted Percent" name to reflect that it's actually unweighted — support
+# both names so this page works whether the old or corrected CSV is loaded.
+if "Unweighted Percent (see note)" in df13.columns:
+    PCT13_COL = "Unweighted Percent (see note)"
+elif "Weighted Percent" in df13.columns:
+    PCT13_COL = "Weighted Percent"
+else:
+    raise KeyError("Could not find the percent column in the GYTS 2013 dataset.")
+
 
 def q2013(question_kw: str, answer_kw: str = None, complement_of_zero: bool = False):
-    """Look up a weighted percent from the 2013 aggregated table by matching
-    on (part of) the survey question text and, optionally, the answer option."""
+    """Look up a percent from the 2013 aggregated table by matching on
+    (part of) the survey question text and, optionally, the answer option."""
     subset = df13[df13["Survey Question"].str.contains(question_kw, case=False, na=False, regex=False)]
     if complement_of_zero:
         zero_row = subset[subset["Answer Option"].str.contains("0 days", case=False, na=False, regex=False)]
-        return round(100 - zero_row["Weighted Percent"].iloc[0], 1) if len(zero_row) else None
+        return round(100 - zero_row[PCT13_COL].iloc[0], 1) if len(zero_row) else None
     if answer_kw:
         row = subset[subset["Answer Option"].str.contains(answer_kw, case=False, na=False, regex=False)]
-        return float(row["Weighted Percent"].iloc[0]) if len(row) else None
+        return float(row[PCT13_COL].iloc[0]) if len(row) else None
     return None
 
 
@@ -421,7 +446,8 @@ st.caption(
     "**Status** compares the 2022 value to 2013 for that same indicator (🟢 moved in the healthy "
     "direction, 🟡 changed less than ~2%, 🔴 moved the wrong way). **Direction** is the raw trend "
     "arrow (▲ up / ▼ down), independent of whether that's good or bad for that indicator. Every "
-    "value is looked up live from the source survey files, not hardcoded."
+    "value is looked up live from the source survey files, not hardcoded. Remember: 2013 figures "
+    "are unweighted and 2022 figures are weighted (see the note at the top of this page)."
 )
 
-page_footer("Built from GYTS 2013 (aggregated) and GYTS 2022 (derived indicators)")
+page_footer("Built from GYTS 2013 (aggregated, unweighted) and GYTS 2022 (derived indicators, weighted)")
