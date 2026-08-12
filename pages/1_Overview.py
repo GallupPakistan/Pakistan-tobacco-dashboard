@@ -277,12 +277,16 @@ st.divider()
 # where's the biggest remaining concern. Computed live from the same
 # comparison data used everywhere else, not hardcoded.
 #
-# FIX: the comparison dataset mixes indicators measured in different units —
-# most are percentages, but two are Pakistani Rupees (average cost of
-# cigarettes, monthly expenditure). Comparing their raw "change" values on
-# one scale is meaningless (a PKR change of +1589.2 will always dwarf a
-# percentage-point change of -30), so currency indicators are excluded below
-# before finding the "biggest increase" among percentage indicators.
+# FIX: this needs FULL direction-awareness, not just currency-exclusion.
+# "Lower is better" is true for most indicators (tobacco use, SHS exposure,
+# ads noticed) but FALSE for four of them — Quit attempts, Advised to quit
+# by a healthcare provider, Noticed health warnings on packages, and
+# Considered quitting due to warnings — where a HIGHER 2024 value is the
+# healthy outcome. A naive "biggest raw increase" or "no indicator
+# increased, so nothing got worse" check silently mislabels a decline in
+# any of those four as if it were fine (or invisible), the same class of
+# bug fixed on the KPI Scorecard and Compare pages. This section now reuses
+# that same per-indicator direction map so the three pages agree.
 # ---------------------------------------------------------------------------
 CURRENCY_INDICATORS = [
     "Avg cost of 20 manufactured cigarettes (PKR, inflation-adj.)",
@@ -293,14 +297,19 @@ df_cmp = load_comparison()
 overall_all = df_cmp[df_cmp["Group"].str.strip().str.lower() == "overall"].copy()
 overall_all["Change (pts)"] = (overall_all["2024 Value"] - overall_all["2014 Value"]).round(1)
 
-# percentage-point-only subset used for "biggest increase" ranking
-overall_pct_only = overall_all[~overall_all["Indicator"].isin(CURRENCY_INDICATORS)]
+# percentage-point-only subset (excludes PKR-valued rows)
+overall_pct_only = overall_all[~overall_all["Indicator"].isin(CURRENCY_INDICATORS)].copy()
+overall_pct_only["Direction"] = overall_pct_only["Indicator"].map(_direction_map)
+overall_pct_only["GoodSign"] = overall_pct_only["Direction"].map({"decrease": -1, "increase": 1})
+overall_pct_only["ImprovementScore"] = overall_pct_only["Change (pts)"] * overall_pct_only["GoodSign"]
 
 use_row = overall_all[overall_all["Indicator"].str.contains("Current tobacco use", case=False, na=False)]
-biggest_increase = (
-    overall_pct_only.loc[overall_pct_only["Change (pts)"].idxmax()]
-    if len(overall_pct_only) else None
-)
+
+# "Biggest concern" = the indicator with the most negative ImprovementScore
+# (i.e. moved the wrong way by the largest margin), regardless of whether
+# its raw Change(pts) was positive or negative.
+worst = overall_pct_only.dropna(subset=["ImprovementScore"]).sort_values("ImprovementScore").head(1)
+n_worse = int((overall_pct_only["ImprovementScore"] < 0).sum())
 
 if len(use_row):
     u = use_row.iloc[0]
@@ -310,15 +319,14 @@ if len(use_row):
         f"Since 2014, overall tobacco use has <b>{direction_word} by {abs(use_delta):.1f} points</b> "
         f"(from {u['2014 Value']:.1f}% to {u['2024 Value']:.1f}%)"
     )
-    if biggest_increase is not None and biggest_increase["Change (pts)"] > 0:
+    if n_worse > 0 and len(worst):
+        w = worst.iloc[0]
         summary_html += (
-            f", while <b>{biggest_increase['Indicator']}</b> shows the largest increase since 2014 "
-            f"(+{biggest_increase['Change (pts)']:.1f} pts)."
+            f", though <b>{n_worse} indicator{'s' if n_worse != 1 else ''}</b> moved the wrong way — "
+            f"most notably <b>{w['Indicator']}</b> ({w['Change (pts)']:+.1f} pts)."
         )
-    elif biggest_increase is not None:
-        summary_html += ", and every other tracked indicator moved in the healthy direction too."
     else:
-        summary_html += "."
+        summary_html += ", and every other tracked indicator moved in the healthy direction too."
 
     st.markdown(
         f"""
