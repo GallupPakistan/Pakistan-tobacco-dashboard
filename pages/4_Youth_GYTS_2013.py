@@ -25,7 +25,15 @@ ACCENT = THEME["accent"]
 # dashboard, and may differ somewhat from any officially "weighted" 2013
 # national estimate published elsewhere.
 # ---------------------------------------------------------------------------
-PCT_COL = "Unweighted Percent (see note)"
+df = load_gyts_2013()
+# Handle either the old or the corrected column name so this page works
+# whether or not the underlying CSV has been replaced yet.
+if "Unweighted Percent (see note)" in df.columns:
+    PCT_COL = "Unweighted Percent (see note)"
+elif "Weighted Percent" in df.columns:
+    PCT_COL = "Weighted Percent"  # old file — mislabeled, but still usable
+else:
+    raise KeyError("Could not find the percent column in the GYTS 2013 dataset.")
 
 st.title("📈 Youth — GYTS 2013 (Aggregated)")
 st.caption(
@@ -39,8 +47,6 @@ st.warning(
     "shown elsewhere in this dashboard, and should not be cited as national estimates.",
     icon="⚠️",
 )
-
-df = load_gyts_2013()
 
 # Questions whose answer options have a natural ascending order (age, grade)
 # rather than being ranked by percentage. Sorting these by percent instead
